@@ -1028,7 +1028,8 @@ function loadTesseract(cb) {
   if (window.Tesseract) { cb(); return; }
   var urls = [
     'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js'
+    'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js',
+    'https://registry.npmmirror.com/tesseract.js/5.1.0/files/dist/tesseract.min.js'
   ];
   var i = 0;
   (function tryLoad() {
@@ -1050,7 +1051,10 @@ $('ocrBtn').addEventListener('click', function () {
     btn.textContent = '识别中…';
     $('ocrProg').textContent = '首次识别需下载中文识别包（约20MB），请耐心等待';
     enhanceImg(pendingImg, function (enh) {
-    Tesseract.recognize(enh, 'chi_sim+eng', {
+    Tesseract.recognize(enh, 'chi_sim', {
+      langPath: 'https://cdn.npmmirror.com/packages/@tesseract.js-data/chi_sim/1.0.0/files/4.0.0_best_int',
+      workerPath: 'https://registry.npmmirror.com/tesseract.js/5.1.0/files/dist/worker.min.js',
+      corePath: 'https://registry.npmmirror.com/tesseract.js-core/5.1.0/files/tesseract-core.wasm.js',
       logger: function (m) {
         if (m.status === 'recognizing text') {
           var p = Math.round((m.progress || 0) * 100);
@@ -1068,13 +1072,24 @@ $('ocrBtn').addEventListener('click', function () {
       $('ocrProg').textContent = '';
       if (!txt) { toast('未识别到文字，请换清晰图片重试'); return; }
       var dt = extractDateTime(txt);
+      var addr = extractAddress(txt);
       if (dt.date) $('f-date').value = dt.date;
       if (dt.time) $('f-time').value = dt.time;
+      if (addr && !($('f-addr').value || '').trim()) $('f-addr').value = addr;
       var cur = $('f-text').value;
-      $('f-text').value = cur ? cur + ' ' + txt.replace(/\s+/g, ' ').slice(0, 120) : txt.replace(/\s+/g, ' ').slice(0, 120);
-      if (dt.date) toast('识别完成，已自动填入日期 ' + dt.date + (dt.time ? ' 与时间' : ''));
-      else if (dt.time) toast('识别完成，已自动填入时间 ' + dt.time);
-      else toast('识别完成，已填入内容');
+      $('f-text').value = cur ? cur + ' ' + txt.replace(/\s+/g, ' ').slice(0, 160) : txt.replace(/\s+/g, ' ').slice(0, 160);
+      var msg = '识别完成';
+      if (dt.date) msg += '，日期已填 ' + dt.date;
+      if (dt.time) msg += '，时间已填';
+      if (addr) msg += '，识别到地址';
+      toast(msg);
+      if (addr && ($('f-addr').value || '').trim()) {
+        setTimeout(function () {
+          if (confirm('识别到地址：' + $('f-addr').value + '\n是否立即在地图上定位？')) {
+            locateOnMap($('f-addr').value);
+          }
+        }, 400);
+      }
     }).catch(function (e) {
       btn.disabled = false;
       btn.textContent = '识别文字';
@@ -1487,16 +1502,20 @@ function enhanceImg(dataURL, cb) {
 }
 function _p2(n) { return (n < 10 ? '0' : '') + n; }
 function extractDateTime(txt) {
+  var s = String(txt || '').replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+  s = s.replace(/\s+/g, ' ');
   var date = null, time = null;
-  var m = txt.match(/(\d{4})[年\-\/\.](\d{1,2})[月\-\/\.](\d{1,2})日?/);
-  if (!m) m = txt.match(/(\d{1,2})月(\d{1,2})日/);
+  var m = s.match(/(\d{4})[年\-\/\.]\s*(\d{1,2})[月\-\/\.]\s*(\d{1,2})日?/);
+  if (!m) m = s.match(/(\d{1,2})月\s*(\d{1,2})日/);
+  if (!m) m = s.match(/(\d{1,2})\/(\d{1,2})(?![\d\.])/);
+  if (!m) m = s.match(/(\d{1,2})[月\-\/\.](\d{1,2})日?/);
   if (m) {
     var y, mo, d;
     if (m[1].length === 4) { y = +m[1]; mo = +m[2]; d = +m[3]; }
     else { y = new Date().getFullYear(); mo = +m[1]; d = +m[2]; }
     if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) date = y + '-' + _p2(mo) + '-' + _p2(d);
   }
-  var t = txt.match(/(上午|下午|晚上|中午|早上|凌晨)?\s*(\d{1,2})[点时:：]\s*(\d{1,2})?分?/);
+  var t = s.match(/(上午|下午|晚上|中午|早上|凌晨)?\s*(\d{1,2})[点时:：]\s*(\d{1,2})?分?/);
   if (t) {
     var h = +t[2], mi = +(t[3] || 0) || 0;
     var ap = t[1] || '';
@@ -1506,6 +1525,12 @@ function extractDateTime(txt) {
     if (h >= 0 && h <= 23 && mi >= 0 && mi <= 59) time = _p2(h) + ':' + _p2(mi);
   }
   return { date: date, time: time };
+}
+function extractAddress(txt) {
+  var s = String(txt || '').replace(/\s+/g, '');
+  var m = s.match(/[^\s，。；、！？]{2,}?(?:路|街|道|弄|巷|小区|苑|园|大厦|广场|写字楼|商务楼)[^\s，。；、！？]{0,20}/);
+  if (!m) m = s.match(/(?:[^\s，。；、！？]{2,}?(?:村|镇|乡|县|区))[^\s，。；、！？]{0,20}/);
+  return m ? m[0] : null;
 }
 
 function clearMapLayers() {
