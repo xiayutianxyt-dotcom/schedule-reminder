@@ -359,6 +359,16 @@
     display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:800;
   }
   .mi-nav:active{background:var(--green); color:#fff;}
+  /* ===== 添加页宽屏横向 ===== */
+  @media (min-width: 860px) {
+    #addView .add-card{display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;}
+    #addView .add-row{width:calc(50% - 5px); margin-bottom:0;}
+    #addView .add-main{width:100%;}
+    #addView .add-img{width:100%; margin:8px 0 0;}
+    #addView .nav-chk{width:100%; margin-top:8px;}
+    #addView .add-quick{width:100%;}
+    #addView .img-prev{width:100%;}
+  }
   /* ===== 地图视图 ===== */
   .map-card{
     margin:10px 14px 0; background:var(--card); border-radius:12px; box-shadow:var(--shadow); overflow:hidden;
@@ -475,6 +485,55 @@
   <button class="vt on" data-view="map">地图</button>
   <button class="vt" data-view="week">周</button>
   <button class="vt" data-view="month">月</button>
+  <button class="vt" data-view="add">添加</button>
+  <button class="vt" data-view="todo">待办</button>
+</div><div id="addView" style="display:none">
+<!-- ===== 添加 ===== -->
+<section class="add-card">
+  <div class="add-row">
+    <input type="date" id="f-date" class="dt">
+    <input type="time" id="f-time" class="tm" value="09:00">
+  </div>
+  <div class="add-main">
+    <input type="text" id="f-text" placeholder="要做什么？如：拜访张总 / 回访李姐 / 晨会">
+    <button id="addBtn">添加</button>
+  </div>
+  <div class="add-row">
+    <input type="text" id="f-addr" placeholder="地址（选填，用于地图规划路线）">
+  </div>
+  <div class="add-img">
+    <input type="file" id="f-img" accept="image/*" style="display:none">
+    <button class="img-btn" id="imgBtn">拍照 / 选图</button>
+    <span class="img-hint">可识别文字自动填入</span>
+    <div class="img-prev" id="imgPrev">
+      <img id="imgPrevImg" alt="预览">
+      <div class="ip-btns">
+        <button class="ocr-btn" id="ocrBtn">识别文字</button>
+        <button class="img-locate" id="imgLocate">定位到地图</button>
+        <button class="img-clear" id="imgClear">移除图片</button>
+        <div class="ocr-progress" id="ocrProg"></div>
+      </div>
+    </div>
+  </div>
+  <label class="nav-chk"><input type="checkbox" id="f-nav"> 添加后直接在地图上导航</label>
+  <div class="add-quick" id="quickRow">
+    <span class="quick" data-min="0">现在</span>
+    <span class="quick" data-min="30">30分钟后</span>
+    <span class="quick" data-min="60">1小时后</span>
+    <span class="quick" data-min="120">2小时后</span>
+    <span class="quick" data-min="0" data-tomorrow="1">明天</span>
+  </div>
+</section>
+</div>
+
+
+<!-- 待办视图（独立） -->
+<div id="todoView" style="display:none">
+  <div class="m-head">
+    <b>全部待办</b>
+    <span class="map-sum" id="todoSum"></span>
+  </div>
+  <div id="todoList"></div>
 </div>
 
 <!-- 周/月概览（默认隐藏） -->
@@ -532,42 +591,7 @@
   </div>
 </div>
 
-<!-- ===== 添加 ===== -->
-<section class="add-card">
-  <div class="add-row">
-    <input type="date" id="f-date" class="dt">
-    <input type="time" id="f-time" class="tm" value="09:00">
-  </div>
-  <div class="add-main">
-    <input type="text" id="f-text" placeholder="要做什么？如：拜访张总 / 回访李姐 / 晨会">
-    <button id="addBtn">添加</button>
-  </div>
-  <div class="add-row">
-    <input type="text" id="f-addr" placeholder="地址（选填，用于地图规划路线）">
-  </div>
-  <div class="add-img">
-    <input type="file" id="f-img" accept="image/*" style="display:none">
-    <button class="img-btn" id="imgBtn">拍照 / 选图</button>
-    <span class="img-hint">可识别文字自动填入</span>
-    <div class="img-prev" id="imgPrev">
-      <img id="imgPrevImg" alt="预览">
-      <div class="ip-btns">
-        <button class="ocr-btn" id="ocrBtn">识别文字</button>
-        <button class="img-locate" id="imgLocate">定位到地图</button>
-        <button class="img-clear" id="imgClear">移除图片</button>
-        <div class="ocr-progress" id="ocrProg"></div>
-      </div>
-    </div>
-  </div>
-  <label class="nav-chk"><input type="checkbox" id="f-nav"> 添加后直接在地图上导航</label>
-  <div class="add-quick" id="quickRow">
-    <span class="quick" data-min="0">现在</span>
-    <span class="quick" data-min="30">30分钟后</span>
-    <span class="quick" data-min="60">1小时后</span>
-    <span class="quick" data-min="120">2小时后</span>
-    <span class="quick" data-min="0" data-tomorrow="1">明天</span>
-  </div>
-</section>
+
 
 <!-- ===== 列表 ===== -->
 <div id="listWrap"></div>
@@ -763,7 +787,7 @@ function render() {
   // 底部统计
   var tAll = items.filter(function (x) { return x.date === today; }).length;
   var tDone = items.filter(function (x) { return x.date === today && x.done; }).length;
-  var tTodo = items.filter(function (x) { return !x.done; }).length;
+  var tTodo = items.filter(function (x) { return !x.done && !x.deleted; }).length;
   $('stToday').textContent = tAll;
   $('stTodo').textContent = tTodo;
   $('stDone').textContent = tDone;
@@ -794,6 +818,8 @@ $('addBtn').addEventListener('click', function () {
   $('f-addr').value = '';
   if (nav && addr && addr.trim()) {
     setTimeout(function () { locateOnMap(addr.trim()); }, 400);
+  } else if (!nav) {
+    toast('已添加，可继续添加');
   }
 });
 $('f-text').addEventListener('keydown', function (e) {
@@ -1162,11 +1188,11 @@ function renderMap() {
   var today = todayStr();
   var tAll = items.filter(function (x) { return x.date === today; }).length;
   var tDone = items.filter(function (x) { return x.date === today && x.done; }).length;
-  var tTodo = items.filter(function (x) { return !x.done; }).length;
+  var tTodo = items.filter(function (x) { return !x.done && !x.deleted; }).length;
   stToday.textContent = tAll;
   stTodo.textContent = tTodo;
   stDone.textContent = tDone;
-  var todo = items.filter(function (x) { return !x.done; });
+  var todo = items.filter(function (x) { return !x.done && !x.deleted; });
   var addrItems = todo.filter(function (x) { return x.addr && x.addr.trim(); }).sort(function (a, b) {
     if (a.date !== b.date) return a.date < b.date ? -1 : 1;
     return (a.time || '') < (b.time || '') ? -1 : 1;
@@ -1219,6 +1245,59 @@ function renderMap() {
     $('mapNoAddr').style.display = 'none';
   }
 }
+
+/* ========== 待办视图 ========== */
+function renderTodo() {
+  var todo = items.filter(function (x) { return !x.done && !x.deleted; }).sort(function (a, b) {
+    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    return (a.time || '') < (b.time || '') ? -1 : 1;
+  });
+  $('todoSum').textContent = '共 ' + todo.length + ' 项 · 点右侧圆圈完成，完成后进回收站';
+  if (!todo.length) {
+    $('todoList').innerHTML = '<div class="map-empty">全部待办已清空<br>去「添加」录入新事项吧</div>';
+    return;
+  }
+  var h = '';
+  todo.forEach(function (it) {
+    h += '<div class="map-item" data-id="' + it.id + '">' +
+      '<div class="mi-mid">' +
+        '<div class="mi-time">' + dayTag(it.date) + ' · ' + esc(it.time || '09:00') + '</div>' +
+        '<div class="mi-text">' + esc(it.text) + '</div>' +
+        (it.addr ? '<div class="mi-addr">' + esc(it.addr) + '</div>' : '<div class="mi-addr" style="color:#d97706">未填地址</div>') +
+        (it.img ? '<img class="mi-img" src="' + it.img + '" data-lb="1" alt="图">' : '') +
+      '</div>' +
+      (it.addr ? '<div class="mi-nav" data-nav="1">导</div>' : '') +
+      '<div class="ops">' + opsHtml(it.id) + '</div>' +
+      '<div class="mi-done">✓</div>' +
+    '</div>';
+  });
+  $('todoList').innerHTML = h;
+}
+$('todoList').addEventListener('click', function (e) {
+  var itEl = e.target.closest('.map-item');
+  if (!itEl) return;
+  var id = itEl.getAttribute('data-id');
+  var it = items.filter(function (x) { return x.id === id; })[0];
+  if (!it) return;
+  if (e.target.closest('[data-lb="1"]')) { openLightbox(e.target.src); return; }
+  if (e.target.closest('.mi-done')) {
+    it.done = true;
+    save(); renderTodo(); renderMap(); refreshToday();
+    toast('已完成，已移入回收站');
+    return;
+  }
+  if (e.target.closest('.mi-nav')) {
+    if (it.addr && it.addr.trim()) locateOnMap(it.addr, '导');
+    else toast('该事项没有地址，先编辑补上');
+    return;
+  }
+  if (e.target.closest('.mi-mid') || e.target.closest('.mi-time')) { showDetail(id); return; }
+  var act = e.target.closest('button[data-act]');
+  if (!act) return;
+  var a = act.getAttribute('data-act');
+  if (a === 'del') { moveToTrash(id); }
+  else if (a === 'edit') { openEdit(id); }
+});
 
 /* ========== 当日明细（周/月点天后显示） ========== */
 function renderDayDetail(ds) {
@@ -1333,6 +1412,7 @@ function restoreItem(id) {
   var it = items.filter(function (x) { return x.id === id; })[0];
   if (!it) return;
   it.deleted = false;
+  if (it.done) it.done = false;
   save(); renderTrash(); renderMap(); refreshToday();
   toast('已恢复');
 }
@@ -1345,21 +1425,21 @@ function purgeItem(id) {
   toast('已彻底删除');
 }
 function emptyTrash() {
-  var n = items.filter(function (x) { return x.deleted; }).length;
+  var n = items.filter(function (x) { return x.deleted || x.done; }).length;
   if (!n) { toast('回收站是空的'); return; }
   if (!confirm('清空回收站（' + n + ' 项）？不可恢复')) return;
-  items = items.filter(function (x) { return !x.deleted; });
+  items = items.filter(function (x) { return !x.deleted && !x.done; });
   save(); renderTrash(); refreshToday();
   toast('回收站已清空');
 }
 function renderTrash() {
-  var trash = items.filter(function (x) { return x.deleted; });
+  var trash = items.filter(function (x) { return x.deleted || x.done; });
   if (!trash.length) { $('trashList').innerHTML = '<div class="map-empty">回收站是空的</div>'; return; }
   var h = '';
   trash.forEach(function (it) {
     h += '<div class="trash-item" data-id="' + it.id + '"><div class="ti-row">' +
       '<div class="ti-mid">' +
-        '<div class="ti-time">' + esc(it.date) + ' · ' + esc(it.time || '09:00') + '</div>' +
+        '<div class="ti-time">' + esc(it.date) + ' · ' + esc(it.time || '09:00') + ' · ' + (it.done ? '已完成' : '已删除') + '</div>' +
         '<div class="ti-text">' + esc(it.text) + '</div>' +
         (it.addr ? '<div class="ti-time">' + esc(it.addr) + '</div>' : '') +
       '</div>' +
@@ -1374,7 +1454,7 @@ function showTrash() {
   closeDetail();
   $('trashEntry').style.display = 'flex';
   $('trashList').style.display = 'block';
-  ['view-tabs', 'add-card', 'calWrap', 'mapView', 'listWrap', 'focusBar', 'dayDetail', 'footbar'].forEach(function (sel) {
+  ['view-tabs', 'add-card', 'addView', 'todoView', 'calWrap', 'mapView', 'listWrap', 'focusBar', 'dayDetail', 'footbar'].forEach(function (sel) {
     var el = document.querySelector('.' + sel) || $('#' + sel);
     if (el) el.style.display = 'none';
   });
@@ -1389,6 +1469,8 @@ function closeTrash() {
     var el = document.querySelector('.' + sel) || $('#' + sel);
     if (el) el.style.display = '';
   });
+  if (curView === 'add') { $('addView').style.display = 'block'; }
+  if (curView === 'todo') { $('todoView').style.display = 'block'; }
   if (curView === 'map' || mapShown) { $('mapView').style.display = 'block'; }
   if (curView === 'week' || curView === 'month') { $('calWrap').style.display = 'block'; }
   if (focusDate) { $('dayDetail').style.display = 'block'; }
@@ -1716,6 +1798,9 @@ function switchView(v) {
   var isCal = (v === 'week' || v === 'month');
   $('calWrap').style.display = isCal ? 'block' : 'none';
   $('mapView').style.display = (v === 'map') ? 'block' : 'none';
+  $('addView').style.display = (v === 'add') ? 'block' : 'none';
+  $('todoView').style.display = (v === 'todo') ? 'block' : 'none';
+  $('listWrap').style.display = (v === 'add') ? 'none' : '';
   if (v === 'map') {
     $('focusBar').style.display = 'none';
     loadAmap();
@@ -1730,6 +1815,9 @@ function switchView(v) {
     $('monthWrap').style.display = '';
     $('weekWrap').style.display = 'none';
     renderMonth();
+  } else if (v === 'todo') {
+    $('focusBar').style.display = 'none';
+    renderTodo();
   } else {
     render();
   }
